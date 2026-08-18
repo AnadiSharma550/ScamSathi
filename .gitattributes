@@ -1,0 +1,19 @@
+# Normalise line endings so three developers on different machines do not
+# generate diffs made entirely of line-ending churn.
+* text=auto eol=lf
+
+# Binary: never normalise, never diff as text.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.ico binary
+*.pdf binary
+*.docx binary
+*.pptx binary
+*.joblib binary
+*.onnx binary
+
+# Generated: collapse in review, exclude from language stats.
+web/package-lock.json linguist-generated=true -diff
+api/migrations/versions/*.py linguist-generated=true

@@ -1,0 +1,18 @@
+line-length = 100
+target-version = "py311"
+
+[lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+# B008 flags function calls in argument defaults. That is exactly how
+# FastAPI declares dependencies (`= Depends(...)`, `= File(...)`), so the
+# rule fights the framework rather than finding bugs.
+ignore = ["B008"]
+
+[lint.per-file-ignores]
+# These modules are data tables -- user-facing copy, regex patterns, scam
+# samples. Wrapping them to 100 columns makes them harder to read and
+# review, so line length is not enforced there. Logic stays linted.
+"app/explain.py" = ["E501"]
+"app/rules.py" = ["E501"]
+"tests/*.py" = ["E501"]
+"migrations/versions/*.py" = ["E501"]
