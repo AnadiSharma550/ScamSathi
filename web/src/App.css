@@ -1,0 +1,107 @@
+.wrap {
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem;
+  text-align: left;
+}
+.sub {
+  color: #555;
+  margin-top: -0.5rem;
+}
+label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+textarea,
+input[type="text"] {
+  width: 100%;
+  font: inherit;
+  padding: 0.5rem;
+  border: 1px solid #767676;
+  border-radius: 4px;
+}
+.tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.tab {
+  font: inherit;
+  padding: 0.4rem 0.9rem;
+  border: 1px solid #767676;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+}
+/* Selected state carries a border weight change, not colour alone. */
+.tab.on {
+  border-width: 3px;
+  font-weight: 700;
+}
+.sev {
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+.hint {
+  font-size: 0.8125rem;
+  color: #555;
+  margin: 0.35rem 0 0;
+}
+.ocr {
+  margin-top: 1rem;
+}
+.ocr-text {
+  white-space: pre-wrap;
+  background: #f4f4f4;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 0.6rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.875rem;
+}
+@media (prefers-color-scheme: dark) {
+  .hint { color: #bbb; }
+  .ocr-text { background: #1a1a1a; border-color: #555; }
+}
+button {
+  margin-top: 0.75rem;
+}
+.error {
+  color: #b3261e;
+  font-weight: 600;
+}
+.result {
+  margin-top: 1.5rem;
+  border-top: 1px solid #ccc;
+  padding-top: 1rem;
+}
+
+/* Risk is never signalled by colour alone -- the label carries the meaning. */
+.band {
+  display: inline-block;
+  font-weight: 700;
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  border: 2px solid currentColor;
+}
+.band-low { color: #1b5e20; }
+.band-caution { color: #8a5000; }
+.band-high { color: #b3261e; }
+.band-unable_to_assess { color: #444; }
+
+.notice {
+  font-size: 0.875rem;
+  color: #444;
+  border-left: 3px solid #999;
+  padding-left: 0.75rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .sub, .notice { color: #bbb; }
+  textarea { background: #1a1a1a; color: #eee; border-color: #888; }
+  .band-low { color: #7fd88b; }
+  .band-caution { color: #f5c26b; }
+  .band-high { color: #ff8a80; }
+  .band-unable_to_assess { color: #ccc; }
+}

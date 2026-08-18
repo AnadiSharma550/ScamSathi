@@ -1,0 +1,12 @@
+data/
+api/models/
+.env
+*.joblib
+*.onnx
+node_modules/
+dist/
+__pycache__/
+*.pyc
+.venv/
+.vite/
+.pytest_cache/

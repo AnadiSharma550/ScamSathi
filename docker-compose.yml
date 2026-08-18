@@ -1,0 +1,11 @@
+services:
+  api:
+    build: ./api
+    ports: ["8000:8000"]
+    volumes: ["./api/app:/app/app"]
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_PASSWORD: scamsathi
+      POSTGRES_DB: scamsathi
+    ports: ["5432:5432"]
