@@ -149,6 +149,21 @@ class UrlScanRequest(BaseModel):
     save: bool = False
 
 
+class FeedbackVerdict(StrEnum):
+    TOO_HIGH = "too_high"       # flagged something the user believes is fine
+    TOO_LOW = "too_low"         # missed a scam -- the I-02 signal
+    UNCLEAR = "unclear"         # right answer, unusable explanation
+    CORRECT = "correct"
+
+
+class FeedbackRequest(BaseModel):
+    scan_id: UUID
+    verdict: FeedbackVerdict
+    # Short and optional. We want the signal, not a free-text channel for
+    # users to paste the scam back in.
+    comment: str | None = Field(default=None, max_length=500)
+
+
 class HistoryItem(BaseModel):
     """A saved scan as the owner sees it. Never carries raw content."""
 

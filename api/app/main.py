@@ -7,11 +7,12 @@ from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
-from app import explain, extract, fusion, history, ocr, rules, urlcheck
+from app import classifier, explain, extract, fusion, history, ocr, rules, urlcheck
 from app.auth import current_user, optional_user
 from app.contracts import (
     MAX_IMAGE_BYTES,
     ExtractedContent,
+    FeedbackRequest,
     HistoryItem,
     InputType,
     ScanResult,
@@ -19,8 +20,6 @@ from app.contracts import (
     UrlScanRequest,
 )
 from app.db import Profile, get_session
-
-MODEL_VERSION = "none-rules-only"
 
 app = FastAPI(title="ScamSathi AI", version="0.2.0")
 
@@ -40,7 +39,7 @@ def healthz() -> dict[str, str]:
 
 @app.get("/api/v1/meta/versions")
 def versions() -> dict[str, str]:
-    return {"model": MODEL_VERSION, "rules": rules.RULE_VERSION}
+    return {"model": classifier.version(), "rules": rules.RULE_VERSION}
 
 
 @app.post("/api/v1/scan/text")
@@ -143,6 +142,18 @@ def delete_history(
         raise HTTPException(404, "Scan not found.")
 
 
+@app.post("/api/v1/feedback", status_code=201)
+def submit_feedback(
+    req: FeedbackRequest,
+    user: Profile = Depends(current_user),
+    session: Session = Depends(get_session),
+) -> dict[str, str]:
+    entry = history.add_feedback(session, user, req)
+    if entry is None:
+        raise HTTPException(404, "Scan not found.")
+    return {"id": str(entry.id), "status": entry.status}
+
+
 @app.delete("/api/v1/history")
 def delete_all_history(
     user: Profile = Depends(current_user),
@@ -158,9 +169,15 @@ def analyse(extracted: ExtractedContent, urls: list[str] | None = None) -> ScanR
     found_urls = urls if urls is not None else extract.raw_urls(extracted.text)
     url_score, url_flags = urlcheck.analyse(found_urls)
     rule_score, rule_flags = rules.evaluate(extracted.text)
+    model = classifier.predict(extracted.text) if extracted.text.strip() else None
 
     assessment = fusion.assess(
-        extracted, rule_score, url_score, rule_flags + url_flags, has_url=bool(found_urls)
+        extracted,
+        rule_score,
+        url_score,
+        rule_flags + url_flags + classifier.indicator(model),
+        has_url=bool(found_urls),
+        model=model,
     )
     explanation = explain.build(assessment, extracted.language_guess)
 
@@ -170,6 +187,6 @@ def analyse(extracted: ExtractedContent, urls: list[str] | None = None) -> ScanR
         extracted=extracted,
         entities=found,
         timing_ms=int((time.perf_counter() - started) * 1000),
-        model_version=MODEL_VERSION,
+        model_version=classifier.version(),
         rule_version=rules.RULE_VERSION,
     )

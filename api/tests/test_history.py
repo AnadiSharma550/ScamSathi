@@ -14,7 +14,7 @@ from sqlalchemy import func, inspect, select
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.auth import JWT_AUDIENCE, JWT_SECRET
-from app.db import Scan, SessionLocal, engine
+from app.db import Feedback, Scan, SessionLocal, engine
 from app.main import app
 
 client = TestClient(app)
@@ -162,6 +162,71 @@ def test_delete_single_scan(user):
     scan_id = client.get("/api/v1/history", headers=auth(user)).json()[0]["id"]
     assert client.delete(f"/api/v1/history/{scan_id}", headers=auth(user)).status_code == 204
     assert client.get("/api/v1/history", headers=auth(user)).json() == []
+
+
+# --- feedback (F9) ---
+
+
+def saved_scan_id(user) -> str:
+    client.post("/api/v1/scan/text", json={"text": SCAM, "save": True}, headers=auth(user))
+    return client.get("/api/v1/history", headers=auth(user)).json()[0]["id"]
+
+
+def test_feedback_accepted_on_own_scan(user):
+    scan_id = saved_scan_id(user)
+    r = client.post(
+        "/api/v1/feedback",
+        json={"scan_id": scan_id, "verdict": "too_low", "comment": "missed a UPI scam"},
+        headers=auth(user),
+    )
+    assert r.status_code == 201
+    assert r.json()["status"] == "open"
+
+
+def test_cannot_leave_feedback_on_another_users_scan(user):
+    scan_id = saved_scan_id(user)
+    other = uuid.uuid4()
+    r = client.post(
+        "/api/v1/feedback",
+        json={"scan_id": scan_id, "verdict": "too_high"},
+        headers=auth(other),
+    )
+    assert r.status_code == 404
+
+
+def test_feedback_requires_a_known_verdict(user):
+    scan_id = saved_scan_id(user)
+    r = client.post(
+        "/api/v1/feedback",
+        json={"scan_id": scan_id, "verdict": "whatever"},
+        headers=auth(user),
+    )
+    assert r.status_code == 422
+
+
+def test_feedback_comment_is_length_capped(user):
+    scan_id = saved_scan_id(user)
+    r = client.post(
+        "/api/v1/feedback",
+        json={"scan_id": scan_id, "verdict": "unclear", "comment": "x" * 501},
+        headers=auth(user),
+    )
+    assert r.status_code == 422
+
+
+def test_deleting_a_scan_removes_its_feedback(user):
+    scan_id = saved_scan_id(user)
+    client.post(
+        "/api/v1/feedback",
+        json={"scan_id": scan_id, "verdict": "correct"},
+        headers=auth(user),
+    )
+    client.delete(f"/api/v1/history/{scan_id}", headers=auth(user))
+    with SessionLocal() as s:
+        remaining = s.scalar(
+            select(func.count()).select_from(Feedback).where(Feedback.scan_id == scan_id)
+        )
+    assert remaining == 0, "feedback outlived the scan it points at"
 
 
 def test_bulk_erase(user):

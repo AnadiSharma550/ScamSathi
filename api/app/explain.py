@@ -47,6 +47,7 @@ EVIDENCE: dict[str, tuple[str, str]] = {
     "rule.job_no_interview": ("It offers income with no interview or screening.", "Check the company independently before sharing anything."),
     "rule.task_based_earning": ("It offers payment for small online tasks.", "Task-and-commission offers routinely end in a demand for deposits."),
     "rule.instant_loan": ("It offers instant credit with no documentation.", "Check the lender on the RBI register before applying."),
+    "model.scam_language": ("The wording closely matches messages known to be scams.", "Treat it with the same caution as a message from a stranger, and check with the sender another way."),
     "url.bad_scheme": ("The link does not use a normal web address.", "Do not open it."),
     "url.ip_literal_host": ("The link points at a raw IP address, not a domain name.", "Do not open it."),
     "url.punycode_host": ("The link's address uses characters that can imitate another name.", "Do not open it. Type the address yourself instead."),

@@ -112,6 +112,19 @@ def test_url_scan_flags_brand_impersonation():
     assert body["assessment"]["band"] in ("high", "caution")
 
 
+def test_elevated_band_always_lists_evidence():
+    """A result must never say warning signs were found and then list none."""
+    for text in HIGH_RISK + LOW_RISK + [
+        # Rules match nothing here; only the model flags it.
+        "Had your mobile 11 months or more? U R entitled to Update to the latest "
+        "colour mobiles with camera for Free! Call The Mobile Update Co FREE on 08002986030",
+    ]:
+        body = scan(text)
+        if body["assessment"]["band"] in ("caution", "high"):
+            assert body["assessment"]["indicators"], f"elevated with no evidence: {text[:50]}"
+            assert body["explanation"]["why"], f"elevated with no explanation: {text[:50]}"
+
+
 def test_url_only_scan_reaches_high_risk():
     """No prose to run rules against must not cap a bad link at Caution."""
     r = client.post("/api/v1/scan/url", json={"url": "paytm.secure-login.top/verify"})

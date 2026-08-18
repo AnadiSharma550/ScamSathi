@@ -87,6 +87,28 @@ class ScanIndicator(Base):
     scan: Mapped[Scan] = relationship(back_populates="indicators")
 
 
+class Feedback(Base):
+    """A user telling us a result was wrong.
+
+    The error signal for Week 9-12 error analysis. Carries no content of its
+    own -- it points at a scan the user already chose to save.
+    """
+
+    __tablename__ = "feedback"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    scan_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("scans.id", ondelete="CASCADE"), index=True
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("profiles.id", ondelete="CASCADE"), index=True
+    )
+    verdict: Mapped[str] = mapped_column(String(24))
+    comment: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    status: Mapped[str] = mapped_column(String(16), default="open", index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 def get_session():
     """FastAPI dependency."""
     session = SessionLocal()

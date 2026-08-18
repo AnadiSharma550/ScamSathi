@@ -1,0 +1,21 @@
+{
+  "model_version": "baseline-1",
+  "seed": 20260819,
+  "results": [
+    {
+      "split": "val",
+      "n": 837,
+      "macro_f1": 0.9813,
+      "scam_recall": 0.9541,
+      "scam_precision": 0.9811,
+      "roc_auc": 0.9902,
+      "confusion": {
+        "tn": 726,
+        "fp": 2,
+        "fn": 5,
+        "tp": 104
+      },
+      "false_negative_rate": 0.0459
+    }
+  ]
+}

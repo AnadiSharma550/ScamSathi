@@ -11,8 +11,8 @@ from sqlalchemy import delete as sql_delete
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.contracts import Entity, HistoryItem, ScanResult
-from app.db import Profile, Scan, ScanIndicator
+from app.contracts import Entity, FeedbackRequest, HistoryItem, ScanResult
+from app.db import Feedback, Profile, Scan, ScanIndicator
 
 EXCERPT_CHARS = 300
 
@@ -91,6 +91,27 @@ def remove(session: Session, user: Profile, scan_id: uuid.UUID) -> bool:
     )
     session.commit()
     return result.rowcount > 0
+
+
+def add_feedback(
+    session: Session, user: Profile, req: FeedbackRequest
+) -> Feedback | None:
+    """None when the scan is not the caller's -- same 404 as a missing one."""
+    owns = session.scalar(
+        select(Scan.id).where(Scan.id == req.scan_id, Scan.user_id == user.id)
+    )
+    if owns is None:
+        return None
+
+    entry = Feedback(
+        scan_id=req.scan_id,
+        user_id=user.id,
+        verdict=req.verdict.value,
+        comment=req.comment,
+    )
+    session.add(entry)
+    session.commit()
+    return entry
 
 
 def remove_all(session: Session, user: Profile) -> int:
