@@ -2,10 +2,28 @@ services:
   api:
     build: ./api
     ports: ["8000:8000"]
-    volumes: ["./api/app:/app/app"]
+    # Whole api/ dir so migrations and tests are live-editable too.
+    volumes: ["./api:/app"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:scamsathi@db:5432/scamsathi
+      SUPABASE_JWT_SECRET: dev-only-secret-change-in-env
+    depends_on:
+      db:
+        condition: service_healthy
   db:
     image: postgres:16
     environment:
       POSTGRES_PASSWORD: scamsathi
       POSTGRES_DB: scamsathi
-    ports: ["5432:5432"]
+    # 5433 on the host: another project already owns 5432. Inside the
+    # compose network the API still reaches it on 5432.
+    ports: ["5433:5432"]
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:

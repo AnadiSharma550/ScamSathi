@@ -4,7 +4,9 @@ Frozen Week 2 -- changing anything here is a three-person decision, because
 all eight module boundaries are defined in terms of these models.
 """
 
+from datetime import datetime
 from enum import StrEnum
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 
@@ -136,8 +138,27 @@ MAX_IMAGE_BYTES = 5 * 1024 * 1024
 class TextScanRequest(BaseModel):
     text: str = Field(min_length=1, max_length=MAX_TEXT_CHARS)
     lang: Language = Language.EN
+    # Requires a signed-in user. Guests setting this get 401, never a
+    # silent write -- see R3.
+    save: bool = False
 
 
 class UrlScanRequest(BaseModel):
     url: str = Field(min_length=4, max_length=2048)
     lang: Language = Language.EN
+    save: bool = False
+
+
+class HistoryItem(BaseModel):
+    """A saved scan as the owner sees it. Never carries raw content."""
+
+    id: UUID
+    input_type: InputType
+    band: RiskBand
+    confidence: float
+    category: ScamCategory
+    sanitized_excerpt: str | None
+    indicator_codes: list[str]
+    model_version: str
+    rule_version: str
+    created_at: datetime
