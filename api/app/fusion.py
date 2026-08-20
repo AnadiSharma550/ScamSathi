@@ -74,12 +74,19 @@ CATEGORY_BY_PREFIX = [
 
 
 def _category(indicators: list[Indicator]) -> ScamCategory:
+    """Category for an elevated band. Never returns LEGITIMATE.
+
+    Called only when evidence exists, so "legitimate" would contradict the
+    band in the same object. When nothing attributes the evidence to a
+    category -- a model-only detection, since the classifier is binary --
+    say so rather than guessing one.
+    """
     strongest = sorted(indicators, key=lambda i: -i.weight)
     for ind in strongest:
         for prefix, category in CATEGORY_BY_PREFIX:
             if ind.code.startswith(prefix):
                 return category
-    return ScamCategory.LEGITIMATE
+    return ScamCategory.UNCATEGORISED
 
 
 def assess(

@@ -58,6 +58,9 @@ def _user_id(creds: HTTPAuthorizationCredentials) -> uuid.UUID:
             algorithms=JWT_ALGORITHMS,
             audience=JWT_AUDIENCE,
             issuer=f"{SUPABASE_URL}/auth/v1",
+            # PyJWT only checks `exp` when it is present, so a token minted
+            # without one would never expire and there is no revocation path.
+            options={"require": ["exp", "sub", "aud", "iss"]},
         )
         return uuid.UUID(claims["sub"])
     except (jwt.InvalidTokenError, KeyError, ValueError) as exc:

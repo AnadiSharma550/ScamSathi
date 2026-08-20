@@ -26,6 +26,10 @@ class RiskBand(StrEnum):
 
 class ScamCategory(StrEnum):
     LEGITIMATE = "legitimate"
+    # Evidence exists but nothing attributes it to a category -- e.g. only
+    # the binary classifier fired. Never claim a category we cannot support,
+    # and never fall back to LEGITIMATE on an elevated band (R2).
+    UNCATEGORISED = "uncategorised"
     PHISHING = "phishing"
     FAKE_JOB = "fake_job"
     PAYMENT_UPI = "payment_upi"

@@ -52,21 +52,25 @@ def registrable(host: str) -> str:
     return ".".join(parts[-2:]) if len(parts) >= 2 else host
 
 
+def _score(flags: list[Indicator]) -> float:
+    return min(sum(f.weight for f in flags), 1.0)
+
+
 def _flag(code: str, severity: Severity, weight: float) -> Indicator:
     return Indicator(code=f"url.{code}", severity=severity, source="url", weight=weight)
 
 
 def analyse(urls: list[str]) -> tuple[float, list[Indicator]]:
-    """Returns (score 0..1, indicators). Worst single URL drives the score."""
+    """Returns (score 0..1, indicators). Worst single URL drives the score.
+
+    Selects a whole (score, flags) pair so the two can never disagree. The
+    previous form seeded `best` with an empty flag list and only replaced it
+    on a strictly higher score, which silently dropped the flags of any URL
+    scoring exactly 0.0.
+    """
     if not urls:
         return 0.0, []
-
-    best_score, best_flags = 0.0, []
-    for url in urls:
-        score, flags = _one(url)
-        if score > best_score:
-            best_score, best_flags = score, flags
-    return best_score, best_flags
+    return max((_one(url) for url in urls), key=lambda result: result[0])
 
 
 def _one(url: str) -> tuple[float, list[Indicator]]:
@@ -77,7 +81,10 @@ def _one(url: str) -> tuple[float, list[Indicator]]:
     if parts.scheme not in ("http", "https"):
         flags.append(_flag("bad_scheme", Severity.CRITICAL, 0.9))
     if not host:
-        return 0.0, flags
+        # `file:///etc/passwd` and friends have no authority. Score from the
+        # flags already raised -- returning 0.0 here made a CRITICAL scheme
+        # flag read as no evidence at all.
+        return _score(flags), flags
 
     if IPV4.match(host):
         flags.append(_flag("ip_literal_host", Severity.MAJOR, 0.7))
@@ -110,4 +117,4 @@ def _one(url: str) -> tuple[float, list[Indicator]]:
     if len(parts.path) > 60:
         flags.append(_flag("long_path", Severity.INFO, 0.15))
 
-    return min(sum(f.weight for f in flags), 1.0), flags
+    return _score(flags), flags

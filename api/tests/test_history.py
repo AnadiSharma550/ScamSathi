@@ -206,6 +206,43 @@ def test_feedback_comment_is_length_capped(user):
     assert r.status_code == 422
 
 
+def test_feedback_comment_is_masked(user):
+    """Users paste the scam back into the comment box."""
+    scan_id = saved_scan_id(user)
+    client.post(
+        "/api/v1/feedback",
+        json={
+            "scan_id": scan_id,
+            "verdict": "too_low",
+            "comment": "they called from 9876543210 and mailed me at victim@example.com",
+        },
+        headers=auth(user),
+    )
+    with SessionLocal() as s:
+        stored = s.scalar(select(Feedback.comment).where(Feedback.scan_id == scan_id))
+    assert "9876543210" not in stored, stored
+    assert "victim@example.com" not in stored, stored
+
+
+def test_token_without_expiry_is_rejected(user):
+    """PyJWT only checks exp when present, so an exp-less token never expires."""
+    import jwt as pyjwt
+
+    from tests.keys import _private
+
+    forever = pyjwt.encode(
+        {
+            "sub": str(user),
+            "aud": "authenticated",
+            "iss": "https://test.supabase.co/auth/v1",
+        },
+        _private,
+        algorithm="ES256",
+    )
+    r = client.get("/api/v1/history", headers={"Authorization": f"Bearer {forever}"})
+    assert r.status_code == 401
+
+
 def test_deleting_a_scan_removes_its_feedback(user):
     scan_id = saved_scan_id(user)
     client.post(

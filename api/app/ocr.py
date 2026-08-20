@@ -59,7 +59,10 @@ def _load(data: bytes) -> Image.Image:
 
 def _prepare(img: Image.Image) -> Image.Image:
     grey = ImageOps.grayscale(img)
-    if grey.height < 1000:
+    # Pillow enforces MAX_IMAGE_PIXELS at decode time only. Upscaling
+    # quadruples the pixel count afterwards, so a 40000x999 image that
+    # passes the guard becomes 160MP here. Check before resizing, not after.
+    if grey.height < 1000 and grey.width * grey.height * 4 <= Image.MAX_IMAGE_PIXELS:
         grey = grey.resize((grey.width * 2, grey.height * 2), Image.LANCZOS)
     return ImageOps.autocontrast(grey)
 

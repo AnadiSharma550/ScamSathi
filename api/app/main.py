@@ -148,6 +148,13 @@ def submit_feedback(
     user: Profile = Depends(current_user),
     session: Session = Depends(get_session),
 ) -> dict[str, str]:
+    # Users paste the scam back into the comment box. Mask it here, at the
+    # composition point, with the same masks used for scan excerpts.
+    if req.comment:
+        req = req.model_copy(
+            update={"comment": history.sanitize(req.comment, extract.entities(req.comment))}
+        )
+
     entry = history.add_feedback(session, user, req)
     if entry is None:
         raise HTTPException(404, "Scan not found.")
