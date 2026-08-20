@@ -1,6 +1,16 @@
 import pytest
 
 from app import ratelimit
+from tests import keys
+
+
+@pytest.fixture(autouse=True)
+def _test_signing_key(monkeypatch):
+    """Verify against a local keypair instead of reaching Supabase.
+
+    Tests must never depend on network access to a third-party service.
+    """
+    keys.install(monkeypatch)
 
 
 @pytest.fixture(autouse=True)

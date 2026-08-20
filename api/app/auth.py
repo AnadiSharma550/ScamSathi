@@ -1,11 +1,12 @@
-"""Supabase JWT verification.
+"""Supabase JWT verification via JWKS.
 
-Supabase signs access tokens HS256 with the project's JWT secret, so this is
-the real verification path, not a stand-in: point SUPABASE_JWT_SECRET at the
-project secret and the same code verifies production tokens.
+The project signs access tokens with ES256, so verification uses the public
+key published at the project's JWKS endpoint. No shared secret exists and
+none is needed -- nothing here is confidential, and SUPABASE_URL is the same
+value the browser already sends on every request.
 
-The role claim is never trusted from the token -- it is read from the
-profiles table, so a user cannot mint themselves an admin session.
+The role claim is never trusted from the token. It is read from the profiles
+table, so a user cannot mint themselves an admin session.
 """
 
 import os
@@ -14,25 +15,49 @@ import uuid
 import jwt
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jwt import PyJWKClient
 from sqlalchemy.orm import Session
 
 from app.db import Profile, get_session
 
-JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET", "dev-only-secret-change-in-env")
+SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
 JWT_AUDIENCE = "authenticated"
+JWT_ALGORITHMS = ["ES256", "RS256"]
+
+# Keys are cached and only refetched when a token arrives with an unknown
+# kid, so rotation is handled without a restart and without a fetch per
+# request.
+_jwk_client = (
+    PyJWKClient(f"{SUPABASE_URL}/auth/v1/.well-known/jwks.json", cache_keys=True)
+    if SUPABASE_URL
+    else None
+)
 
 # auto_error=False so guests reach the endpoint instead of getting a 403.
 _optional = HTTPBearer(auto_error=False)
 _required = HTTPBearer(auto_error=True)
 
 
+def _signing_key(token: str):
+    """Public key for this token. Patched in tests; never mocked in prod."""
+    if _jwk_client is None:
+        raise HTTPException(503, "Authentication is not configured.")
+    try:
+        return _jwk_client.get_signing_key_from_jwt(token).key
+    except jwt.PyJWKClientError as exc:
+        # Could not reach or parse the key set. That is our problem, not a
+        # bad token, so do not tell the user their session is invalid.
+        raise HTTPException(503, "Cannot verify sessions right now.") from exc
+
+
 def _user_id(creds: HTTPAuthorizationCredentials) -> uuid.UUID:
     try:
         claims = jwt.decode(
             creds.credentials,
-            JWT_SECRET,
-            algorithms=["HS256"],
+            _signing_key(creds.credentials),
+            algorithms=JWT_ALGORITHMS,
             audience=JWT_AUDIENCE,
+            issuer=f"{SUPABASE_URL}/auth/v1",
         )
         return uuid.UUID(claims["sub"])
     except (jwt.InvalidTokenError, KeyError, ValueError) as exc:

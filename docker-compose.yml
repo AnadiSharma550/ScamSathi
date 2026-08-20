@@ -6,7 +6,7 @@ services:
     volumes: ["./api:/app"]
     environment:
       DATABASE_URL: postgresql+psycopg://postgres:scamsathi@db:5432/scamsathi
-      SUPABASE_JWT_SECRET: dev-only-secret-change-in-env
+      SUPABASE_URL: ${SUPABASE_URL:-}
     depends_on:
       db:
         condition: service_healthy

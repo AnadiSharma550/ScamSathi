@@ -5,17 +5,16 @@ Run them with `docker compose run --rm api python -m pytest`.
 """
 
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 
-import jwt
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import func, inspect, select
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.auth import JWT_AUDIENCE, JWT_SECRET
 from app.db import Feedback, Scan, SessionLocal, engine
 from app.main import app
+from tests import keys
 
 client = TestClient(app)
 
@@ -34,20 +33,8 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def token(user_id: uuid.UUID) -> str:
-    return jwt.encode(
-        {
-            "sub": str(user_id),
-            "aud": JWT_AUDIENCE,
-            "exp": datetime.now(UTC) + timedelta(hours=1),
-        },
-        JWT_SECRET,
-        algorithm="HS256",
-    )
-
-
 def auth(user_id: uuid.UUID) -> dict[str, str]:
-    return {"Authorization": f"Bearer {token(user_id)}"}
+    return {"Authorization": f"Bearer {keys.token(user_id)}"}
 
 
 def scan_count() -> int:
@@ -134,23 +121,28 @@ def test_history_requires_authentication():
     assert client.get("/api/v1/history").status_code == 403
 
 
-def test_forged_token_is_rejected(user):
-    bad = jwt.encode({"sub": str(user), "aud": JWT_AUDIENCE}, "wrong-secret", algorithm="HS256")
-    r = client.get("/api/v1/history", headers={"Authorization": f"Bearer {bad}"})
+def test_token_signed_by_another_key_is_rejected(user):
+    forged = keys.token(user, key=keys.other_key())
+    r = client.get("/api/v1/history", headers={"Authorization": f"Bearer {forged}"})
     assert r.status_code == 401
 
 
 def test_expired_token_is_rejected(user):
-    stale = jwt.encode(
-        {
-            "sub": str(user),
-            "aud": JWT_AUDIENCE,
-            "exp": datetime.now(UTC) - timedelta(hours=1),
-        },
-        JWT_SECRET,
-        algorithm="HS256",
-    )
+    stale = keys.token(user, expires_in=timedelta(hours=-1))
     r = client.get("/api/v1/history", headers={"Authorization": f"Bearer {stale}"})
+    assert r.status_code == 401
+
+
+def test_token_from_another_project_is_rejected(user):
+    """A valid Supabase token from a different project must not work here."""
+    wrong_issuer = keys.token(user, issuer="https://someone-else.supabase.co/auth/v1")
+    r = client.get("/api/v1/history", headers={"Authorization": f"Bearer {wrong_issuer}"})
+    assert r.status_code == 401
+
+
+def test_token_for_another_audience_is_rejected(user):
+    wrong_aud = keys.token(user, audience="anon")
+    r = client.get("/api/v1/history", headers={"Authorization": f"Bearer {wrong_aud}"})
     assert r.status_code == 401
 
 
