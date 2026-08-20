@@ -1,6 +1,8 @@
 # Annotation Guide
 
-How to label a record for the ScamSathi corpus. Two annotators label an overlapping sample independently; Cohen's kappa is computed on the overlap and disagreements are adjudicated by the third team member. Target κ ≥ 0.75.
+How to label a record for the ScamSathi corpus.
+
+**On agreement:** Cohen's kappa measures agreement between *two people*. This is a solo build, so see PROJECT_PLAN.md §8 for the three options — get a teammate to label the overlap (preferred), report intra-annotator consistency over a time gap and label it as such, or report neither. Do not report a kappa that did not come from two independent annotators. Everything below applies regardless of which option is taken; the guideline is the consistency control.
 
 Read this whole document before labelling anything. The borderline cases in §4 are where agreement is actually won or lost.
 
@@ -96,12 +98,20 @@ Never commit a record containing a real person's contact details. If a message i
 
 ## 7. Process
 
-1. Label independently. **Do not discuss while labelling** — discussion inflates κ without improving the guideline.
-2. Overlap sample: 500 records labelled by two annotators.
-3. Compute Cohen's κ per language. Report all of them; a good overall κ can hide poor Hinglish agreement.
-4. κ < 0.75 → the guideline is at fault, not the annotators. Add a borderline row to §4 and re-label the disputed slice.
-5. Adjudicate disagreements with the third member. Record the decision and, if it generalises, add it to §4.
-6. Version this file. Any change after labelling begins requires re-checking affected records.
+Solo labelling — the default path:
+
+1. Label in batches, following this guide. Never label from memory of a similar record.
+2. Whenever you hesitate, fill in `comment` and, if the case generalises, add a row to §4. **The guideline is the consistency control when there is no second annotator**, so growing §4 is the actual quality work.
+3. Re-read §4 at the start of each session. Drift is the solo failure mode.
+4. Version this file. Any change after labelling begins requires re-checking affected records.
+
+If a second annotator is available (preferred — see PROJECT_PLAN.md §8):
+
+5. Label independently. **Do not discuss while labelling** — discussion inflates κ without improving the guideline.
+6. Overlap sample: 500 records.
+7. `python ml/corpus.py kappa a.csv b.csv` — reports overall and per language. A good overall κ can hide poor Hinglish agreement.
+8. κ < 0.75 → the guideline is at fault, not the annotators. Add a borderline row to §4 and re-label the disputed slice.
+9. Adjudicate disagreements and record the decision.
 
 ---
 

@@ -48,20 +48,20 @@ This is why `fusion` currently lets the model raise risk but not lower it — se
 
 Not yet collected. Each needs a row above, with licence and checksum, before use.
 
-| ID | Source | Purpose | Owner | Blocking issue |
-|---|---|---|---|---|
-| DS-02 | NCRP / RBI awareness material [2][3] | Derive Indian scam patterns and non-sensitive examples | Nilaksh | Paraphrase where required; record provenance per item |
-| DS-03 | Publicly published scam examples | Phishing, job, payment, impersonation in Indian context | Nilaksh | Verify collection terms permit research use; strip personal identifiers |
-| DS-04 | Team-authored Hindi / Hinglish examples | Cover the gap DS-01 cannot | All three | **Seed started** — see below. Must be flagged `synthetic=true` and **excluded from the held-out test set** |
-| DS-05 | Screenshot benchmark | CER/WER measurement by language and quality tier | Nilaksh | Needs ground-truth transcriptions; include a degraded tier (see note below) |
+| ID | Source | Purpose | Blocking issue |
+|---|---|---|---|
+| DS-02 | NCRP / RBI awareness material [2][3] | Derive Indian scam patterns and non-sensitive examples | Paraphrase where required; record provenance per item |
+| DS-03 | Publicly published scam examples | Phishing, job, payment, impersonation in Indian context | Verify collection terms permit research use; strip personal identifiers |
+| DS-04 | Hand-written Hindi / Hinglish examples | Cover the gap DS-01 cannot | **Seed started** — see below. Must be flagged `synthetic=true` and **excluded from the held-out test set** |
+| DS-05 | Screenshot benchmark | CER/WER measurement by language and quality tier | Needs ground-truth transcriptions; include a degraded tier (see note below) |
 
 **Note for DS-05:** rule patterns are `\b`-anchored, so OCR that drops an inter-word space silently defeats them — observed with `kyc_lure` on a low-quality render. The benchmark must include a degraded tier specifically to quantify how often this happens.
 
 ### DS-04 seed (started)
 
-`ml/seed/ds04-hinglish-seed.csv` — 42 team-authored records, 25 Hinglish / 17 Devanagari Hindi, covering all seven labels with no per-language gaps.
+`ml/seed/ds04-hinglish-seed.csv` — 42 hand-written records, 25 Hinglish / 17 Devanagari Hindi, covering all seven labels with no per-language gaps.
 
-Tracked in Git, unlike `data/`, because we hold the rights and it is small enough that all three developers should have it on clone. Downloaded and derived data stays out of source control; content we authored does not.
+Tracked in Git, unlike `data/`, because we hold the rights and it is small. Downloaded and derived data stays out of source control; content we authored does not.
 
 **This is a seed, not a corpus.** 42 synthetic records train nothing. Its purposes are:
 
