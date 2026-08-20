@@ -32,12 +32,14 @@ BOOLS = {"true", "false"}
 
 MIN_TEXT_CHARS = 10
 
-# Reuse the application's own detectors rather than keeping a second,
-# weaker definition of what an unredacted identifier looks like. If the app
-# can spot it in a scan, the corpus gate must reject it in a record.
+# Run the application's own extractor over each record rather than keeping
+# a second, weaker definition of what an unredacted identifier looks like.
+# Using `entities` and not the raw patterns means the gate inherits the
+# whole pipeline -- including digit-run classification -- so it is by
+# construction exactly as strong as the app, and stays that way.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "api"))
 from app.contracts import EntityKind  # noqa: E402
-from app.extract import PATTERNS  # noqa: E402
+from app.extract import entities  # noqa: E402
 
 # Contactable or identifying values. Amounts, urgency words and URL
 # structure are evidence and must stay -- see annotation guide §6.
@@ -47,8 +49,8 @@ FORBIDDEN_KINDS = {
     EntityKind.UPI_HANDLE,
     EntityKind.CARD,
     EntityKind.AADHAAR,
+    EntityKind.ID_NUMBER,
 }
-FORBIDDEN = [(kind.value, pattern) for kind, pattern in PATTERNS if kind in FORBIDDEN_KINDS]
 
 
 def read(path: Path) -> list[dict[str, str]]:
@@ -94,9 +96,9 @@ def validate(paths: list[Path]) -> int:
             if not row["consent"].strip():
                 problems.append(f"{where}: no consent/licence basis recorded")
 
-            for name, pattern in FORBIDDEN:
-                if pattern.search(row["text"]):
-                    problems.append(f"{where}: unredacted {name}")
+            for entity in entities(row["text"]):
+                if entity.kind in FORBIDDEN_KINDS:
+                    problems.append(f"{where}: unredacted {entity.kind.value}")
 
     if problems:
         print(f"FAILED -- {len(problems)} problem(s):", file=sys.stderr)

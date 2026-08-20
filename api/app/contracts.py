@@ -61,6 +61,9 @@ class EntityKind(StrEnum):
     UPI_HANDLE = "upi_handle"
     CARD = "card"
     AADHAAR = "aadhaar"
+    # A long number we cannot attribute -- account or reference number, or a
+    # card of an unrecognised length. Masked rather than guessed at.
+    ID_NUMBER = "id_number"
     AMOUNT = "amount"
     URGENCY = "urgency"
 

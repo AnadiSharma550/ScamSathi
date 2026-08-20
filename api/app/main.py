@@ -151,8 +151,10 @@ def submit_feedback(
     # Users paste the scam back into the comment box. Mask it here, at the
     # composition point, with the same masks used for scan excerpts.
     if req.comment:
+        # `redact`, not `sanitize` -- the latter truncates to the 300-char
+        # excerpt length and would silently cut a valid 500-char comment.
         req = req.model_copy(
-            update={"comment": history.sanitize(req.comment, extract.entities(req.comment))}
+            update={"comment": history.redact(req.comment, extract.entities(req.comment))}
         )
 
     entry = history.add_feedback(session, user, req)

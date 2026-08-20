@@ -17,8 +17,8 @@ from app.db import Feedback, Profile, Scan, ScanIndicator
 EXCERPT_CHARS = 300
 
 
-def sanitize(text: str, entities: list[Entity]) -> str:
-    """Replace every detected identifier with its masked form, then truncate.
+def redact(text: str, entities: list[Entity]) -> str:
+    """Replace every detected identifier with its masked form.
 
     Reuses the masks `extract` already produced, so there is exactly one
     definition of what a masked phone number looks like.
@@ -27,8 +27,16 @@ def sanitize(text: str, entities: list[Entity]) -> str:
     for entity in sorted(entities, key=lambda e: -e.span[0]):
         start, end = entity.span
         out = out[:start] + entity.value_redacted + out[end:]
-    out = " ".join(out.split())
-    return out[:EXCERPT_CHARS]
+    return " ".join(out.split())
+
+
+def sanitize(text: str, entities: list[Entity]) -> str:
+    """Redact, then truncate to an excerpt. For `scans.sanitized_excerpt`.
+
+    Do not reuse this for fields with their own length limit -- it would
+    truncate them silently at EXCERPT_CHARS. Use `redact` there.
+    """
+    return redact(text, entities)[:EXCERPT_CHARS]
 
 
 def save(session: Session, user: Profile, result: ScanResult) -> Scan:

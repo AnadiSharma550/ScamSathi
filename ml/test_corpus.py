@@ -83,12 +83,17 @@ def test_rejects_identifier_formats_the_app_can_detect(tmp_path, leaky):
     assert corpus.validate([write(tmp_path, [record])]) == 1, f"accepted: {leaky}"
 
 
-def test_gate_reuses_the_app_detectors():
-    """One definition of an unredacted identifier, not two."""
-    from app.extract import PATTERNS
+def test_gate_reuses_the_app_extractor():
+    """One definition of an unredacted identifier, not two.
 
-    app_patterns = {p for _, p in PATTERNS}
-    assert all(pattern in app_patterns for _, pattern in corpus.FORBIDDEN)
+    The gate runs `app.extract.entities`, so anything the app can detect in
+    a live scan is rejected here -- it cannot silently fall behind.
+    """
+    from app.contracts import EntityKind
+
+    assert corpus.entities.__module__ == "app.extract"
+    for kind in (EntityKind.PHONE, EntityKind.CARD, EntityKind.AADHAAR, EntityKind.ID_NUMBER):
+        assert kind in corpus.FORBIDDEN_KINDS
 
 
 def test_accepts_masked_identifiers(tmp_path):

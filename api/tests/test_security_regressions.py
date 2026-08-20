@@ -112,6 +112,10 @@ def test_upscale_cannot_exceed_the_pixel_guard():
         ("Use card 4111 1111 1111 1111 for the payment", "4111 1111 1111 1111"),
         ("Send aadhaar 1234 5678 9012 for verification", "1234 5678 9012"),
         ("Aadhaar number 123456789012 needed now", "123456789012"),
+        ("he rang 09876543210 twice", "09876543210"),          # STD form
+        ("call 987-654-3210 now", "987-654-3210"),             # 3-3-4 grouping
+        ("a/c 90741852963074 confirm", "90741852963074"),      # 14 digits
+        ("a/c 9074185296307418529 x", "9074185296307418529"),  # 19 digits
     ],
 )
 def test_identifier_never_survives_masking(text, leaked):
@@ -119,6 +123,69 @@ def test_identifier_never_survives_masking(text, leaked):
     from app.history import sanitize
 
     assert leaked not in sanitize(text, entities(text)), f"{leaked!r} left in cleartext"
+
+
+@pytest.mark.parametrize(
+    "text,leftover",
+    [
+        ("card 4111 1111 1111 11119 ok", "11119"),
+        ("acct 1234 5678 9012 3456 78 ok", "78"),
+    ],
+)
+def test_partial_match_never_leaves_digits(text, leftover):
+    """A near-miss used to mask a prefix and leave the tail in cleartext.
+
+    Worse than a clean miss, because the output looked redacted.
+    """
+    from app.extract import entities
+    from app.history import sanitize
+
+    masked = sanitize(text, entities(text))
+    digits_left = "".join(c for c in masked if c.isdigit())
+    assert leftover not in masked.split("*")[-1] or len(digits_left) <= 4, masked
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["Rs 25,00,000 in lucky draw", "date 15/08/2024 ok", "pincode 560001 area", "Earn Rs 5000 daily"],
+)
+def test_ordinary_numbers_are_not_over_masked(text):
+    """Amounts, dates and PIN codes are evidence and must survive."""
+    from app.extract import entities
+    from app.history import sanitize
+
+    assert sanitize(text, entities(text)) == text
+
+
+def test_country_code_mobile_is_labelled_phone_not_aadhaar():
+    from app.contracts import EntityKind
+    from app.extract import entities
+
+    kinds = [e.kind for e in entities("Call me on 919876543210 urgently")]
+    assert EntityKind.PHONE in kinds and EntityKind.AADHAAR not in kinds
+
+
+def test_url_userinfo_is_dropped():
+    from app.contracts import EntityKind
+    from app.extract import mask
+
+    assert "pw" not in mask(EntityKind.URL, "https://user:pw@evil.com/p")
+
+
+def test_bare_host_gets_no_phantom_path():
+    from app.contracts import EntityKind
+    from app.extract import mask
+
+    assert mask(EntityKind.URL, "https://x.com") == "x.com"
+
+
+def test_redact_does_not_truncate():
+    """sanitize() caps at excerpt length; comments have their own limit."""
+    from app.extract import entities
+    from app.history import redact
+
+    long_comment = "x" * 465
+    assert len(redact(long_comment, entities(long_comment))) == 465
 
 
 def test_url_query_string_is_masked():
