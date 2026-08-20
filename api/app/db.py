@@ -109,6 +109,25 @@ class Feedback(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class AuditEvent(Base):
+    """Administrative accountability trail.
+
+    Records who changed what. Never contains scan content -- `meta` is for
+    a status transition or a version identifier, not for user text.
+    """
+
+    __tablename__ = "audit_events"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    actor: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
+    action: Mapped[str] = mapped_column(String(48))
+    target: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    meta: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )
+
+
 def get_session():
     """FastAPI dependency."""
     session = SessionLocal()

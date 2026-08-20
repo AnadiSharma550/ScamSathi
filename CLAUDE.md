@@ -68,9 +68,26 @@ Revert (2) only when the model is retrained on the multilingual corpus with per-
 
 ## What is and is not done
 
-Done: text/link/screenshot scanning, 16 rules, 10 URL checks, OCR (`eng+hin`), TF-IDF classifier, saved history with ownership isolation, feedback, rate limiting, Supabase JWT via JWKS, CI green.
+Done: text/link/screenshot scanning, 16 rules, 10 URL checks, OCR (`eng+hin`), TF-IDF classifier, saved history with ownership isolation, feedback, rate limiting, Supabase JWT via JWKS, admin API (F10), CI green.
 
-Not done: **F10 admin dashboard** (the last outstanding Must), awareness hub, analytics, PWA, frontend sign-in, MuRIL transformer.
+Not done: awareness hub (F7), analytics (F8/F11), PWA (F12), frontend sign-in, admin UI, MuRIL transformer.
+
+### Administration
+
+Admin routes are role-gated by `require_admin`, which reads `profiles.role` — never the token. The API covers the feedback queue, review with audit, de-identified metrics and indicator frequency. **There is no admin UI yet**; the endpoints are real and tested.
+
+Two deliberate omissions: content management (F7 does not exist, so there is nothing to manage) and rule/model version tables (versions are code constants; a table would duplicate state).
+
+Administrators cannot read scan text. The queue carries evidence codes, band and category but no excerpt — masked content is still the user's content. If a case cannot be judged without it, that needs an explicit consent flow, not a wider default.
+
+Granting the role — the user must sign in once first so the profile row exists:
+
+```bash
+docker compose run --rm api python scripts/grant_admin.py --list
+docker compose run --rm api python scripts/grant_admin.py <user-id>
+```
+
+A script, not a psql one-liner, because the grant is itself an administrative change and belongs in the audit trail.
 
 **The real bottleneck is the corpus, not code.** The multilingual claim is currently true of OCR and a few regexes, not of the ML. `ml/corpus.py` gates anything entering the corpus; `ml/seed/ds04-hinglish-seed.csv` is the template.
 

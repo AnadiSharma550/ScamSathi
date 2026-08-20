@@ -7,12 +7,18 @@ from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
+from app import admin as admin_ops
 from app import classifier, explain, extract, fusion, history, ocr, ratelimit, rules, urlcheck
-from app.auth import current_user, optional_user
+from app.auth import current_user, optional_user, require_admin
 from app.contracts import (
     MAX_IMAGE_BYTES,
+    AdminFeedbackItem,
+    AdminMetrics,
+    AuditItem,
     ExtractedContent,
     FeedbackRequest,
+    FeedbackReviewRequest,
+    FeedbackStatus,
     HistoryItem,
     InputType,
     ScanResult,
@@ -169,6 +175,55 @@ def delete_all_history(
     session: Session = Depends(get_session),
 ) -> dict[str, int]:
     return {"deleted": history.remove_all(session, user)}
+
+
+# --- administration (F10). Every route is role-gated by require_admin. ---
+
+
+@app.get("/api/v1/admin/feedback")
+def admin_feedback(
+    status: FeedbackStatus | None = None,
+    admin: Profile = Depends(require_admin),
+    session: Session = Depends(get_session),
+) -> list[AdminFeedbackItem]:
+    return admin_ops.feedback_queue(session, status)
+
+
+@app.patch("/api/v1/admin/feedback/{feedback_id}")
+def admin_review_feedback(
+    feedback_id: uuid.UUID,
+    req: FeedbackReviewRequest,
+    admin: Profile = Depends(require_admin),
+    session: Session = Depends(get_session),
+) -> AdminFeedbackItem:
+    item = admin_ops.review_feedback(session, admin, feedback_id, req)
+    if item is None:
+        raise HTTPException(404, "Feedback not found.")
+    return item
+
+
+@app.get("/api/v1/admin/metrics")
+def admin_metrics(
+    admin: Profile = Depends(require_admin),
+    session: Session = Depends(get_session),
+) -> AdminMetrics:
+    return admin_ops.metrics(session)
+
+
+@app.get("/api/v1/admin/indicators")
+def admin_indicators(
+    admin: Profile = Depends(require_admin),
+    session: Session = Depends(get_session),
+) -> dict[str, int]:
+    return admin_ops.indicator_frequency(session)
+
+
+@app.get("/api/v1/admin/audit")
+def admin_audit(
+    admin: Profile = Depends(require_admin),
+    session: Session = Depends(get_session),
+) -> list[AuditItem]:
+    return admin_ops.audit_log(session)
 
 
 def analyse(extracted: ExtractedContent, urls: list[str] | None = None) -> ScanResult:

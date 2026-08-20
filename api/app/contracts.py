@@ -165,12 +165,75 @@ class FeedbackVerdict(StrEnum):
     CORRECT = "correct"
 
 
+class FeedbackStatus(StrEnum):
+    OPEN = "open"
+    REVIEWING = "reviewing"
+    ACTIONED = "actioned"      # led to a rule or threshold change
+    DISMISSED = "dismissed"    # reviewed, no change warranted
+
+
 class FeedbackRequest(BaseModel):
     scan_id: UUID
     verdict: FeedbackVerdict
     # Short and optional. We want the signal, not a free-text channel for
     # users to paste the scam back in.
     comment: str | None = Field(default=None, max_length=500)
+
+
+class AdminFeedbackItem(BaseModel):
+    """Feedback as a reviewer sees it.
+
+    Deliberately carries no scan text. Administrators cannot freely browse
+    private scans (synopsis §2.5), so review works from the evidence codes
+    and the band, not from the user's message. If a case genuinely cannot be
+    judged without the content, that needs an explicit consent flow, not a
+    wider default.
+    """
+
+    id: UUID
+    scan_id: UUID
+    verdict: FeedbackVerdict
+    comment: str | None
+    status: FeedbackStatus
+    created_at: datetime
+    # Scan context, no content
+    input_type: InputType
+    band: RiskBand
+    confidence: float
+    category: ScamCategory
+    indicator_codes: list[str]
+    model_version: str
+    rule_version: str
+
+
+class FeedbackReviewRequest(BaseModel):
+    status: FeedbackStatus
+    note: str | None = Field(default=None, max_length=500)
+
+
+class AdminMetrics(BaseModel):
+    """De-identified counts only. No user ids, no content, no timestamps
+    fine-grained enough to single anyone out."""
+
+    scans_saved: int
+    by_band: dict[str, int]
+    by_category: dict[str, int]
+    by_input_type: dict[str, int]
+    feedback_by_verdict: dict[str, int]
+    feedback_by_status: dict[str, int]
+    # The signal that matters most: users reporting a missed scam.
+    open_too_low: int
+    model_version: str
+    rule_version: str
+
+
+class AuditItem(BaseModel):
+    id: UUID
+    actor: UUID
+    action: str
+    target: str | None
+    meta: str | None
+    created_at: datetime
 
 
 class HistoryItem(BaseModel):
