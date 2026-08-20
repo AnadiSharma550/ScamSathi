@@ -32,11 +32,23 @@ BOOLS = {"true", "false"}
 
 MIN_TEXT_CHARS = 10
 
-# Patterns that must never survive redaction (annotation guide §6).
-FORBIDDEN = [
-    ("raw 10-digit phone", r"(?<!\*)\b[6-9]\d{9}\b"),
-    ("unmasked email", r"\b[\w.+-]+@[\w-]+\.[\w.-]+\b"),
-]
+# Reuse the application's own detectors rather than keeping a second,
+# weaker definition of what an unredacted identifier looks like. If the app
+# can spot it in a scan, the corpus gate must reject it in a record.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "api"))
+from app.contracts import EntityKind  # noqa: E402
+from app.extract import PATTERNS  # noqa: E402
+
+# Contactable or identifying values. Amounts, urgency words and URL
+# structure are evidence and must stay -- see annotation guide §6.
+FORBIDDEN_KINDS = {
+    EntityKind.PHONE,
+    EntityKind.EMAIL,
+    EntityKind.UPI_HANDLE,
+    EntityKind.CARD,
+    EntityKind.AADHAAR,
+}
+FORBIDDEN = [(kind.value, pattern) for kind, pattern in PATTERNS if kind in FORBIDDEN_KINDS]
 
 
 def read(path: Path) -> list[dict[str, str]]:
@@ -45,8 +57,6 @@ def read(path: Path) -> list[dict[str, str]]:
 
 
 def validate(paths: list[Path]) -> int:
-    import re
-
     problems: list[str] = []
     seen_ids: set[str] = set()
 
@@ -85,8 +95,8 @@ def validate(paths: list[Path]) -> int:
                 problems.append(f"{where}: no consent/licence basis recorded")
 
             for name, pattern in FORBIDDEN:
-                if re.search(pattern, row["text"]):
-                    problems.append(f"{where}: {name} left unredacted")
+                if pattern.search(row["text"]):
+                    problems.append(f"{where}: unredacted {name}")
 
     if problems:
         print(f"FAILED -- {len(problems)} problem(s):", file=sys.stderr)

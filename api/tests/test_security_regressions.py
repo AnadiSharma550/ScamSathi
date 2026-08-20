@@ -100,6 +100,36 @@ def test_upscale_cannot_exceed_the_pixel_guard():
     assert prepared.width * prepared.height <= Image.MAX_IMAGE_PIXELS
 
 
+# --- identifier formats that previously survived masking ---
+
+
+@pytest.mark.parametrize(
+    "text,leaked",
+    [
+        ("Emergency, send Rs 50,000 to 98765 43210 now", "98765 43210"),
+        ("Call me on 919876543210 urgently please", "919876543210"),
+        ("Call me on +91-9876543210 urgently please", "9876543210"),
+        ("Use card 4111 1111 1111 1111 for the payment", "4111 1111 1111 1111"),
+        ("Send aadhaar 1234 5678 9012 for verification", "1234 5678 9012"),
+        ("Aadhaar number 123456789012 needed now", "123456789012"),
+    ],
+)
+def test_identifier_never_survives_masking(text, leaked):
+    from app.extract import entities
+    from app.history import sanitize
+
+    assert leaked not in sanitize(text, entities(text)), f"{leaked!r} left in cleartext"
+
+
+def test_url_query_string_is_masked():
+    """Splitting on "/" alone left "?otp=123456" in cleartext."""
+    from app.extract import entities
+
+    found = entities("click www.pay.example?otp=123456&user=me@x.com now")
+    urls = [e.value_redacted for e in found if e.kind == "url"]
+    assert urls and "otp=123456" not in urls[0], urls
+
+
 def test_small_images_are_still_upscaled():
     """The guard must not disable upscaling for ordinary screenshots."""
     from PIL import Image

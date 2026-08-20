@@ -59,6 +59,8 @@ class EntityKind(StrEnum):
     PHONE = "phone"
     EMAIL = "email"
     UPI_HANDLE = "upi_handle"
+    CARD = "card"
+    AADHAAR = "aadhaar"
     AMOUNT = "amount"
     URGENCY = "urgency"
 

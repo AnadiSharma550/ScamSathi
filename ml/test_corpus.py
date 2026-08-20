@@ -67,6 +67,30 @@ def test_rejects_unredacted_email(tmp_path):
     assert corpus.validate([write(tmp_path, [leaky])]) == 1
 
 
+@pytest.mark.parametrize(
+    "leaky",
+    [
+        "Turant paise bhejo 98765 43210 par abhi",       # spaced phone
+        "Call kijiye 919876543210 par turant abhi",      # 91-prefixed
+        "Card number 4111 1111 1111 1111 bhejein",       # card
+        "Aadhaar 1234 5678 9012 verify karein turant",   # aadhaar
+        "Payment karo rahul.kumar@paytm par turant",     # UPI handle
+    ],
+)
+def test_rejects_identifier_formats_the_app_can_detect(tmp_path, leaky):
+    """The gate must be at least as strong as the app's own detectors."""
+    record = {**GOOD, "text": leaky}
+    assert corpus.validate([write(tmp_path, [record])]) == 1, f"accepted: {leaky}"
+
+
+def test_gate_reuses_the_app_detectors():
+    """One definition of an unredacted identifier, not two."""
+    from app.extract import PATTERNS
+
+    app_patterns = {p for _, p in PATTERNS}
+    assert all(pattern in app_patterns for _, pattern in corpus.FORBIDDEN)
+
+
 def test_accepts_masked_identifiers(tmp_path):
     masked = {**GOOD, "text": "Turant paise bhejo is number par 98******10 abhi"}
     assert corpus.validate([write(tmp_path, [masked])]) == 0
