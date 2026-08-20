@@ -52,10 +52,40 @@ Not yet collected. Each needs a row above, with licence and checksum, before use
 |---|---|---|---|---|
 | DS-02 | NCRP / RBI awareness material [2][3] | Derive Indian scam patterns and non-sensitive examples | Nilaksh | Paraphrase where required; record provenance per item |
 | DS-03 | Publicly published scam examples | Phishing, job, payment, impersonation in Indian context | Nilaksh | Verify collection terms permit research use; strip personal identifiers |
-| DS-04 | Team-authored Hindi / Hinglish examples | Cover the gap DS-01 cannot | All three | Must be flagged `synthetic=true` and **excluded from the held-out test set** |
+| DS-04 | Team-authored Hindi / Hinglish examples | Cover the gap DS-01 cannot | All three | **Seed started** — see below. Must be flagged `synthetic=true` and **excluded from the held-out test set** |
 | DS-05 | Screenshot benchmark | CER/WER measurement by language and quality tier | Nilaksh | Needs ground-truth transcriptions; include a degraded tier (see note below) |
 
 **Note for DS-05:** rule patterns are `\b`-anchored, so OCR that drops an inter-word space silently defeats them — observed with `kyc_lure` on a low-quality render. The benchmark must include a degraded tier specifically to quantify how often this happens.
+
+### DS-04 seed (started)
+
+`ml/seed/ds04-hinglish-seed.csv` — 42 team-authored records, 25 Hinglish / 17 Devanagari Hindi, covering all seven labels with no per-language gaps.
+
+Tracked in Git, unlike `data/`, because we hold the rights and it is small enough that all three developers should have it on clone. Downloaded and derived data stays out of source control; content we authored does not.
+
+**This is a seed, not a corpus.** 42 synthetic records train nothing. Its purposes are:
+
+1. Give DS-02/DS-03 collection a validated schema to land in.
+2. Encode the annotation guide's borderline cases as data — `ds04-027` (delivers an OTP, does not request one), `ds04-034` (forwarded warning), `ds04-033` (marketing spam is legitimate), `ds04-041` (talking about spam). These are the hard negatives a model trained only on scam text will get wrong.
+3. Cover patterns entirely absent from DS-01: UPI collect-request reversal, AnyDesk remote access, electricity-disconnection, customs-clearance fee, SIM-fraud scare, Aadhaar-only instant loan.
+
+Every record is `synthetic=true`, so it is training-only and must never enter the held-out test set.
+
+---
+
+## Tooling
+
+`ml/corpus.py` is the gate. Nothing enters `data/corpus/` without passing it.
+
+```bash
+python ml/corpus.py validate ml/seed/ds04-hinglish-seed.csv
+python ml/corpus.py stats    ml/seed/*.csv
+python ml/corpus.py kappa    annotator-a.csv annotator-b.csv
+```
+
+- **`validate`** rejects a record with no consent/licence basis, an unknown label or language, a `source_id` that does not reference this register, a duplicate id, or an unredacted phone number or email address. The redaction check is a real gate, not advice — 15 tests in `ml/test_corpus.py` cover it, including that masked forms (`98******10`) pass while raw ones do not.
+- **`stats`** prints label and language distribution plus a per-language coverage grid that flags any label with zero examples in a language. A corpus can look balanced overall while a language has no examples of a whole category.
+- **`kappa`** computes Cohen's κ overall **and per language**, and exits non-zero below 0.75. Per-language matters because a good overall figure can hide poor Hinglish agreement, which is exactly the split we care about. A κ below target means the guideline is at fault, not the annotators — add a borderline row to the annotation guide and re-label.
 
 ---
 

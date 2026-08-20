@@ -60,13 +60,19 @@ jobs:
       - name: Migrate
         run: alembic upgrade head
 
+      # -rs reports skip reasons. A skipped test is a failure here: the OCR
+      # and history suites skip themselves when tesseract or the database is
+      # missing, which would let CI report green while testing nothing.
       - name: Test
-        run: python -m pytest -q
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m pytest -q -rs --strict-markers | tee result.txt
+          ! grep -q "skipped" result.txt
 
-      # Guards against a test that skips itself into a false pass: the OCR
-      # and history suites must actually run on CI.
-      - name: Fail if any test skipped
-        run: python -m pytest -q -rs --strict-markers | tee out.txt && ! grep -q "skipped" out.txt
+      - name: Corpus gate tests
+        working-directory: .
+        run: python -m pytest ml/ -q
 
   web:
     runs-on: ubuntu-latest

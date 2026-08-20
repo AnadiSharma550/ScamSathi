@@ -7,7 +7,7 @@ from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
-from app import classifier, explain, extract, fusion, history, ocr, rules, urlcheck
+from app import classifier, explain, extract, fusion, history, ocr, ratelimit, rules, urlcheck
 from app.auth import current_user, optional_user
 from app.contracts import (
     MAX_IMAGE_BYTES,
@@ -42,7 +42,7 @@ def versions() -> dict[str, str]:
     return {"model": classifier.version(), "rules": rules.RULE_VERSION}
 
 
-@app.post("/api/v1/scan/text")
+@app.post("/api/v1/scan/text", dependencies=[Depends(ratelimit.limit_scan)])
 def scan_text(
     req: TextScanRequest,
     user: Profile | None = Depends(optional_user),
@@ -59,7 +59,7 @@ def scan_text(
     return _maybe_save(result, req.save, user, session)
 
 
-@app.post("/api/v1/scan/url")
+@app.post("/api/v1/scan/url", dependencies=[Depends(ratelimit.limit_scan)])
 def scan_url(
     req: UrlScanRequest,
     user: Profile | None = Depends(optional_user),
@@ -94,7 +94,7 @@ def _maybe_save(
     return result
 
 
-@app.post("/api/v1/scan/image")
+@app.post("/api/v1/scan/image", dependencies=[Depends(ratelimit.limit_scan)])
 async def scan_image(file: UploadFile = File(...)) -> ScanResult:
     # Read with a hard ceiling: never buffer an unbounded upload.
     data = await file.read(MAX_IMAGE_BYTES + 1)
@@ -142,7 +142,7 @@ def delete_history(
         raise HTTPException(404, "Scan not found.")
 
 
-@app.post("/api/v1/feedback", status_code=201)
+@app.post("/api/v1/feedback", status_code=201, dependencies=[Depends(ratelimit.limit_feedback)])
 def submit_feedback(
     req: FeedbackRequest,
     user: Profile = Depends(current_user),
