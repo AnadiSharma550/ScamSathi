@@ -10,3 +10,7 @@ __pycache__/
 .venv/
 .vite/
 .pytest_cache/
+
+# Synopsis documents contain SAP IDs and personal names -- keep them local.
+*.docx
+*.pptx

@@ -30,7 +30,9 @@ jobs:
 
     env:
       DATABASE_URL: postgresql+psycopg://postgres:scamsathi@localhost:5432/scamsathi
-      SUPABASE_JWT_SECRET: ci-only-secret
+      # No Supabase value is needed: tests verify against a locally
+      # generated keypair and never reach the network. SUPABASE_URL is not a
+      # secret in any case -- the browser sends it on every request.
 
     defaults:
       run:
