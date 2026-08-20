@@ -2,6 +2,8 @@
 
 Multilingual scam-risk detection. A user submits a message, a link, or a screenshot; the system returns a **risk band with evidence**, not a verdict.
 
+**Picking up this project?** Start with [docs/HANDOFF.md](docs/HANDOFF.md) — current state, open issues, and what to do next.
+
 Full plan and every non-obvious decision: [docs/PROJECT_PLAN.md](docs/PROJECT_PLAN.md). Its §13 change log is the record of *why* things differ from the synopsis — read it before "fixing" something that looks wrong.
 
 ---
