@@ -115,3 +115,37 @@ Produced by `ml/baseline.py`, recorded in `ml/reports/split-manifest.json`.
 - Seed `20260819`, recorded in the manifest along with the source checksum.
 
 **The test split is frozen.** `ml/baseline.py` only touches it when `--final` is passed. Every number quoted during development comes from validation. No accuracy figure is reportable until it comes from the frozen test set (R5).
+
+---
+
+## Rule coverage measured on DS-04 (development signal only)
+
+**Not a reportable accuracy figure.** `rules-2` was tuned against the DS-04 seed, so the seed can no longer measure it — this records what the exercise found, not how good the rules are.
+
+`rules-1`, before any Devanagari work:
+
+| | Records | Detected | Missed |
+|---|---|---|---|
+| Scam | 30 | 13 | **17 (57%)** |
+| Legitimate | 12 | 10 | 2 false alarms |
+
+Thirteen of the seventeen misses were Devanagari. Every pattern in `rules-1` was ASCII — English with a handful of romanised Hinglish tokens — so an unambiguous Hindi card-detail phish scored Low Risk. The project's multilingual claim was true of OCR and untrue of detection.
+
+`rules-2` adds Devanagari and wider Hinglish forms across every family, and reaches 30/30 and 12/12 on the seed. Again: fitted to that seed, so the number means "the gaps found are closed", nothing more.
+
+**Held-out check.** Fourteen fresh cases (ten scams, four legitimate) were written afterwards and run once, untouched by tuning: **14/14**. They now live in `api/tests/test_multilingual.py` as regression cover, which means they are spent as a measurement too.
+
+Honest evaluation of the rule engine still requires DS-02/DS-03 and the frozen test split (R5).
+
+### Two false-alarm classes worth remembering
+
+Both came from the annotation guide's own borderline cases, and both are easy to reintroduce:
+
+- **Urgency is a modifier, not evidence.** Legitimate marketing is urgent. `deadline_pressure` is now weighted below the Caution threshold so it cannot band a message alone.
+- **Mentioning a thing is not doing it.** "KYC is up to date" is not a KYC lure (B2); an OTP *delivery* is not an OTP *request* (B1); "block this spam number" is not an account threat; "contact the bank" is advice a real fraud alert gives, not impersonation.
+
+### The model abstains on Devanagari
+
+`baseline-1` scored **0.979** on an ordinary Hindi discount advert — it has never seen Devanagari and guessed confidently. Since fusion lets the model raise risk but not lower it, that confident guess became a false alarm the rules could not overrule.
+
+`classifier.in_distribution` now returns False when fewer than 60% of letters are Latin, so the model does not vote on Devanagari at all and those messages rely on the rule engine. Hinglish is Latin-script Hindi and stays in distribution. Remove the gate when the model is retrained on the multilingual corpus.

@@ -21,6 +21,10 @@ from app.contracts import ClassifierResult, Indicator, ScamCategory, Severity
 INDICATOR_AT = 0.5
 STRONG_AT = 0.9
 
+# Share of letters that must be Latin for the model to vote at all.
+# Hinglish is Latin-script Hindi, so it stays in; Devanagari does not.
+LATIN_SHARE_MIN = 0.6
+
 MODEL_PATH = Path(os.getenv("MODEL_PATH", "/app/models/baseline.joblib"))
 
 _model = None
@@ -52,10 +56,27 @@ def version() -> str:
     return _version if _model is not None else "none-rules-only"
 
 
+def in_distribution(text: str) -> bool:
+    """False for text in a script the model has never seen.
+
+    `baseline-1` is trained on Latin-script English SMS. On Devanagari it
+    does not generalise, it guesses -- and confidently: an ordinary Hindi
+    discount advert scored 0.979. Abstaining is honest and leaves those
+    messages to the rule engine, which does have Devanagari patterns.
+
+    Remove this gate once the model is trained on the multilingual corpus.
+    """
+    letters = [c for c in text if c.isalpha()]
+    if not letters:
+        return False
+    latin = sum(1 for c in letters if c.isascii())
+    return latin / len(letters) >= LATIN_SHARE_MIN
+
+
 def predict(text: str) -> ClassifierResult | None:
-    """Calibrated P(scam), or None when no model is loaded."""
+    """Calibrated P(scam), or None when the model has no business voting."""
     _load()
-    if _model is None:
+    if _model is None or not in_distribution(text):
         return None
 
     p_scam = float(_model.predict_proba([text])[0][1])
